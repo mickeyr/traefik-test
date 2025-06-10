@@ -1,0 +1,49 @@
+name: traefik_test
+services:
+  traefik:
+    image: traefik:v3.4
+    container_name: traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.web.address=:80"
+    ports:
+      - 80:80
+      - 8080:8080
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks:
+      - gateway_network
+
+
+  httpbin:
+    image: kennethreitz/httpbin:latest
+    container_name: httpbin
+    ports:
+      - "8001:80"
+    networks:
+      - gateway_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.httpbin.rule=PathRegexp(`(?i)^/api/v1/httpbin`)"
+      - "traefik.http.routers.httpbin.entrypoints=web"
+      - "traefik.http.middlewares.httpbin.stripprefix.prefixes=/api/v1/httpbin"
+
+  petstore:
+    image: swaggerapi/petstore:latest
+    container_name: petstore
+    # The swaggerapi/petstore container listens on port 80 internally
+    ports:
+      - "8002:8080"
+    networks:
+      - gateway_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pets.rule=PathRegexp(`(?i)^/api/v1/pets/.`)"
+      - "traefik.http.routers.pets.entrypoints=web"
+      - "traefik.http.middlewares.pets.stripprefix.prefixes=/api/v1/pets"
+
+networks:
+  gateway_network: {}
+
